@@ -62,8 +62,8 @@ export function modulNach(id, firma, rolle) {
   return null;
 }
 
-/** Womit startet diese Rolle? */
+/** Womit startet diese Rolle? Der erste Bereich, der eigenen Inhalt hat. */
 export function startModul(firma, rolle) {
   const alle = moduleFuer(firma, rolle);
-  return alle.find((m) => m.render)?.id ?? null;
+  return alle.find((m) => m.render || m.mount)?.id ?? null;
 }

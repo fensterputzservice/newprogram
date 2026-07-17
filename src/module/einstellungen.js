@@ -1,11 +1,21 @@
 /* ============================================================
    Einstellungen – für beide Firmen gleich aufgebaut
+
+   Ein Modul mit Untermenü. Die Untereinträge registrieren sich
+   nicht selbst – sie liefern nur ihre mount-Funktion und wissen
+   nichts vom Menü. So steht die Reihenfolge der Punkte an einer
+   Stelle und nicht verteilt über acht Dateien.
    ============================================================ */
 
 import { registriere } from '../kern/registry.js';
-import { nochNichtPortiert } from '../kern/ui.js';
-
-const platz = (titel, datei) => () => nochNichtPortiert(titel, `src/module/einstellungen/${datei}`);
+import { mountLeistungen } from './einstellungen/leistungen.js';
+import { mountKostentraeger } from './einstellungen/kostentraeger.js';
+import { mountEmailVorlagen, mountBeratungsVorlagen } from './einstellungen/vorlagen.js';
+import { mountMarketing } from './einstellungen/marketing.js';
+import { mountProtokoll } from './einstellungen/protokoll.js';
+import { mountZugaenge } from './einstellungen/zugaenge.js';
+import { mountSchulungen } from './einstellungen/schulungen.js';
+import { mountDesign } from './einstellungen/design.js';
 
 registriere({
   id: 'einstellungen',
@@ -17,51 +27,52 @@ registriere({
     {
       id: 'leistungen',
       titel: 'Leistungen',
-      render: platz('Leistungen', 'leistungen.js'),
+      mount: mountLeistungen,
     },
     {
       id: 'kostentraeger',
       titel: 'Kostenträger',
-      render: platz('Kostenträger', 'kostentraeger.js'),
+      mount: mountKostentraeger,
     },
     {
       id: 'vorlage-email',
       titel: 'E-Mail-Vorlage',
-      render: platz('E-Mail-Vorlage', 'vorlagen.js'),
+      mount: mountEmailVorlagen,
     },
     {
       // Liegt in derselben Tabelle wie die E-Mail-Vorlage, nur mit typ='beratung'.
       id: 'vorlage-beratung',
       titel: 'Beratungsvorlage',
-      render: platz('Beratungsvorlage', 'vorlagen.js'),
+      mount: mountBeratungsVorlagen,
     },
     {
       id: 'marketing',
       titel: 'Marketingmaterial',
-      render: platz('Marketingmaterial', 'marketing.js'),
+      mount: mountMarketing,
     },
     {
+      // Nur lesen – siehe protokoll.js.
       id: 'protokoll',
       titel: 'Aktivitätsprotokoll',
-      render: platz('Aktivitätsprotokoll', 'protokoll.js'),
+      mount: mountProtokoll,
     },
     {
       // Wer welche Firma betreten darf – deshalb nur Admin.
       id: 'zugaenge',
       titel: 'Zugänge & Rollen',
       rollen: ['admin'],
-      render: platz('Zugänge & Rollen', 'zugaenge.js'),
+      mount: mountZugaenge,
     },
     {
       id: 'schulungen',
       titel: 'Schulungen',
-      render: platz('Schulungen', 'schulungen.js'),
+      mount: mountSchulungen,
     },
     {
       id: 'design',
       titel: 'Design und Farben',
       rollen: ['admin'],
-      render: platz('Design und Farben', 'design.js'),
+      mount: mountDesign,
     },
   ],
 });

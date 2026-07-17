@@ -4,7 +4,7 @@
    Anmeldung  →  Firmenauswahl  →  Anwendung
    ============================================================ */
 
-import { $, zeige, hinweis, sicher } from './kern/ui.js';
+import { $, zeige, hinweis, sicher, laedt, fehlerkarte } from './kern/ui.js';
 import { zustand, anmelden, abmelden, sitzung } from './kern/auth.js';
 import {
   mandant, ladeFirmen, betrete, verlasse, gemerkteFirma, firmenfarbe,
@@ -150,13 +150,27 @@ function zurueckZurWahl() {
 /* ============================================================
    Anwendung
    ============================================================ */
-function zeigeAnwendung() {
+/**
+ * Firmenname, Rolle und Kennfarbe in Leiste und Kopfzeile setzen.
+ *
+ * Läuft auch bei jedem Bereichswechsel: Ändert jemand unter
+ * Einstellungen → Design die Farben, bliebe der Punkt im Umschalter
+ * sonst auf der alten Farbe stehen, während der Rest schon umgefärbt ist.
+ */
+function kopfAktualisieren() {
   const f = mandant.aktiv;
+  if (!f) return;
 
   $('leiste-firma').textContent = f.name;
   $('leiste-rolle').textContent = ROLLENNAME[mandant.rolle] ?? mandant.rolle;
   $('wechsler-name').textContent = f.name;
   $('wechsler-punkt').style.background = firmenfarbe(f);
+}
+
+function zeigeAnwendung() {
+  const f = mandant.aktiv;
+
+  kopfAktualisieren();
   $('demo-streifen').classList.toggle('verborgen', !zustand.test);
   $('wechsler').classList.toggle('verborgen', mandant.firmen.length < 2);
 
@@ -203,13 +217,20 @@ function baueNav() {
   });
 }
 
-/** Einen Bereich öffnen. */
-function oeffne(id) {
+/**
+ * Einen Bereich öffnen.
+ *
+ * Module liefern entweder fertiges HTML (render) oder bauen sich
+ * selbst in die Bühne (mount) – Letzteres, wenn sie Daten nachladen
+ * oder Knöpfe verdrahten müssen.
+ */
+async function oeffne(id) {
   const modul = modulNach(id, mandant.aktiv, mandant.rolle);
   if (!modul) return hinweis('Dieser Bereich steht nicht zur Verfügung.', true);
 
   // Menüpunkte mit Untermenü klappen auf, statt selbst zu öffnen.
-  if ((modul.unter ?? []).length > 0 && !modul.render) {
+  const hatEigenenInhalt = modul.render || modul.mount;
+  if ((modul.unter ?? []).length > 0 && !hatEigenenInhalt) {
     ausgeklappt.has(id) ? ausgeklappt.delete(id) : ausgeklappt.add(id);
     return baueNav();
   }
@@ -218,24 +239,33 @@ function oeffne(id) {
   offenesModul = id;
   $('kopf-titel').textContent = modul.titel;
   $('seitenleiste').classList.remove('offen');
+  kopfAktualisieren();
+  baueNav();
+
+  const ctx = {
+    firma: mandant.aktiv,
+    rolle: mandant.rolle,
+    benutzer: zustand.benutzer,
+    // Damit ein Modul sich nach dem Speichern selbst neu zeichnen kann.
+    neuLaden: () => oeffne(id),
+  };
+
+  const buehne = $('buehne');
 
   try {
-    $('buehne').innerHTML = modul.render({
-      firma: mandant.aktiv,
-      rolle: mandant.rolle,
-      benutzer: zustand.benutzer,
-    });
+    if (modul.mount) {
+      buehne.innerHTML = laedt(modul.titel);
+      // Zwischenzeitlicher Moduswechsel: Ergebnis verwerfen, sonst
+      // überschreibt ein langsamer Ladevorgang den neuen Bereich.
+      await modul.mount(buehne, ctx);
+      if (offenesModul !== id) return;
+    } else {
+      buehne.innerHTML = modul.render(ctx);
+    }
   } catch (fehler) {
     console.error(fehler);
-    $('buehne').innerHTML =
-      `<div class="karte"><div class="platzhalter">
-        <span class="zeichen">⚠</span>
-        <h2>${sicher(modul.titel)} konnte nicht geladen werden</h2>
-        <p>${sicher(fehler.message)}</p>
-      </div></div>`;
+    if (offenesModul === id) buehne.innerHTML = fehlerkarte(fehler.message);
   }
-
-  baueNav();
 }
 
 start();
